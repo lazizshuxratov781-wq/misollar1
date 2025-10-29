@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mobil Mashina O‘yini</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #222;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    .game-area {
+      position: relative;
+      width: 300px;
+      height: 500px;
+      background-color: #444;
+      overflow: hidden;
+      border: 2px solid #fff;
+    }
+
+    .player-car {
+      position: absolute;
+      width: 50px;
+      height: 100px;
+      background-color: red;
+      bottom: 20px;
+      left: 125px;
+      border-radius: 10px;
+    }
+
+    .enemy-car {
+      position: absolute;
+      width: 50px;
+      height: 100px;
+      background-color: yellow;
+      top: -100px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-area" id="gameArea">
+    <div class="player-car" id="playerCar"></div>
+  </div>
+
+  <script>
+    const gameArea = document.getElementById("gameArea");
+    const playerCar = document.getElementById("playerCar");
+    let playerX = 125;
+    let enemyCars = [];
+
+    function createEnemyCar() {
+      const enemy = document.createElement("div");
+      enemy.classList.add("enemy-car");
+      enemy.style.left = Math.floor(Math.random() * 250) + "px";
+      gameArea.appendChild(enemy);
+      enemyCars.push(enemy);
+    }
+
+    function moveEnemies() {
+      for (let i = 0; i < enemyCars.length; i++) {
+        let enemy = enemyCars[i];
+        let top = parseInt(enemy.style.top.replace("px", "")) || -100;
+        top += 5;
+        enemy.style.top = top + "px";
+
+        // Urilishni tekshirish
+        if (
+          top > 380 &&
+          top < 500 &&
+          Math.abs(parseInt(enemy.style.left) - playerX) < 50
+        ) {
+          alert("O‘yin tugadi!");
+          window.location.reload();
+        }
+
+        if (top > 500) {
+          enemy.remove();
+          enemyCars.splice(i, 1);
+          i--;
+        }
+      }
+    }
+
+    function gameLoop() {
+      moveEnemies();
+      requestAnimationFrame(gameLoop);
+    }
+
+    setInterval(createEnemyCar, 1500);
+    gameLoop();
+
+    // Telefon uchun teginish (touch) boshqaruvi
+    let touchStartX = null;
+
+    gameArea.addEventListener("touchstart", (e) => {
+      touchStartX = e.touches[0].clientX;
+    });
+
+    gameArea.addEventListener("touchend", (e) => {
+      let touchEndX = e.changedTouches[0].clientX;
+      if (touchEndX < touchStartX) {
+        // Chapga yurish
+        playerX -= 25;
+        if (playerX < 0) playerX = 0;
+      } else {
+        // O‘ngga yurish
+        playerX += 25;
+        if (playerX > 250) playerX = 250;
+      }
+      playerCar.style.left = playerX + "px";
+    });
+  </script>
+</body>
+</html>
