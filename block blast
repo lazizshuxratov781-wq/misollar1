@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Block Blast — O'yin</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --panel:#0b1220;
+    --accent:#ff6b6b;
+    --muted:#94a3b8;
+    --card:#071029;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#071126 0%,var(--bg) 100%); color:#eef2ff}
+  .wrap {
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    box-sizing:border-box;
+  }
+  .game {
+    display:grid;
+    grid-template-columns: 360px 260px;
+    gap:20px;
+    align-items:start;
+  }
+  .board {
+    background: linear-gradient(180deg,#0c1530,#07112a);
+    padding:12px;
+    border-radius:12px;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+  }
+  canvas {
+    background: linear-gradient(180deg,#071029,#0b1220);
+    border-radius:10px;
+    display:block;
+    margin:auto;
+    box-shadow: inset 0 2px 8px rgba(255,255,255,0.02);
+    touch-action: none;
+  }
+  .panel {
+    background:var(--card);
+    padding:16px;
+    border-radius:12px;
+    width:240px;
+    box-shadow: 0 8px 20px rgba(2,6,23,0.6);
+  }
+  h1{margin:0 0 8px 0;font-size:20px;color:#fff;text-align:center}
+  .info {color:var(--muted); font-size:13px; margin-bottom:8px; text-align:center}
+  .stat {display:flex;gap:8px;flex-direction:column;margin-bottom:12px}
+  .stat .row{display:flex;justify-content:space-between;color:#dbeafe;font-weight:600;padding:10px;border-radius:8px;background:linear-gradient(180deg,#071b2b,#063142);font-size:14px}
+  .controls{display:flex;flex-direction:column;gap:8px}
+  button {
+    background:linear-gradient(180deg,#1e293b,#0b1220);
+    border:1px solid rgba(255,255,255,0.04);
+    color:#e6f0ff;padding:10px;border-radius:8px;cursor:pointer;font-weight:700;
+  }
+  button.secondary{
+    background:transparent;border:1px solid rgba(255,255,255,0.06);
+    color:var(--muted);font-weight:600;
+  }
+  .hint{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
+  .footer {text-align:center;margin-top:12px;font-size:12px;color:var(--muted)}
+  /* responsive */
+  @media (max-width:900px){
+    .game{grid-template-columns: 1fr; width:100%}
+    .panel{width:100%}
+    canvas{width:100% !important;height:auto !important}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="game">
+      <div class="board">
+        <canvas id="boardCanvas" width="360" height="480" aria-label="Block Blast o'yin taxtasi"></canvas>
+      </div>
+
+      <div class="panel" role="region" aria-label="O'yin boshqaruvi">
+        <h1>Block Blast</h1>
+        <div class="info">Yonma-yon ranglarni portlatib bal yig'ing!</div>
+
+        <div class="stat">
+          <div class="row"><span>Ball</span><span id="score">0</span></div>
+          <div class="row"><span>Level</span><span id="level">1</span></div>
+          <div class="row"><span>Qolgan harakat</span><span id="moves">-</span></div>
+        </div>
+
+        <div class="controls">
+          <button id="newBtn">Yangi o'yin</button>
+          <button id="hintBtn" class="secondary">Hint <span id="hintCost">(-)</span></button>
+          <button id="shuffleBtn" class="secondary">Aralashtir</button>
+        </div>
+
+        <div class="hint" id="hintText">Click/touch cluster to blast. Minimal cluster = 2</div>
+        <div class="footer">Made with ❤️ — demo</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Block Blast — single-file HTML/JS game.
+  Grid-based, flood-fill cluster removal, gravity, scoring.
+  Controls: New game, Hint, Shuffle.
+*/
+
+(() => {
+  // Config
+  const COLS = 8;
+  const ROWS = 12;
+  const CELL_SIZE = 40; // pixels
+  const COLORS = ['#ff6b6b','#ffd93d','#6be4a6','#6bd3ff','#b58bff','#ff9fb1'];
+  const MIN_CLUSTER = 2;
+  const CANVAS_W = COLS * CELL_SIZE;
+  const CANVAS_H = ROWS * CELL_SIZE;
+
+  // State
+  let grid = [];
+  let score = 0;
+  let level = 1;
+  let movesLeft = null; // optional
+  let canvas, ctx;
+  let animating = false;
+
+  function randInt(n) { return Math.floor(Math.random()*n); }
+
+  // Initialize canvas
+  function setupCanvas(){
+    canvas = document.getElementById('boardCanvas');
+    canvas.width = CANVAS_W;
+    canvas.height = CANVAS_H;
+    canvas.style.width = CANVAS_W + 'px';
+    canvas.style.height = CANVAS_H + 'px';
+    ctx = canvas.getContext('2d');
+    canvas.addEventListener('pointerdown', handlePointer);
+  }
+
+  // Create new grid
+  function newGrid(){
+    grid = [];
+    for(let r=0;r<ROWS;r++){
+      const row = [];
+      for(let c=0;c<COLS;c++){
+        row.push({ color: randInt(COLORS.length), id: idFor(r,c) });
+      }
+      grid.push(row);
+    }
+  }
+
+  function idFor(r,c){ return r+'-'+c; }
+
+  // Draw function
+  function draw(){
+    ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+    // background
+    ctx.fillStyle = '#071029';
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+
+    // draw cells
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const cell = grid[r][c];
+        if(!cell) continue;
+        const x = c*CELL_SIZE;
+        const y = r*CELL_SIZE;
+        // shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        roundRect(ctx, x+2, y+4, CELL_SIZE-4, CELL_SIZE-4, 8);
+        ctx.fill();
+        // main
+        ctx.fillStyle = COLORS[cell.color];
+        roundRect(ctx, x, y, CELL_SIZE-6, CELL_SIZE-6, 8);
+        ctx.fill();
+        // glossy
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.ellipse(x + CELL_SIZE/2 - 4, y + CELL_SIZE/2 - 10, CELL_SIZE/3, CELL_SIZE/4, Math.PI/6, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    // grid lines (subtle)
+    ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+    for(let r=1;r<ROWS;r++){
+      ctx.beginPath();
+      ctx.moveTo(0, r*CELL_SIZE);
+      ctx.lineTo(CANVAS_W, r*CELL_SIZE);
+      ctx.stroke();
+    }
+    for(let c=1;c<COLS;c++){
+      ctx.beginPath();
+      ctx.moveTo(c*CELL_SIZE, 0);
+      ctx.lineTo(c*CELL_SIZE, CANVAS_H);
+      ctx.stroke();
+    }
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  // Convert pointer to grid coords
+  function posToCell(px,py){
+    const rect = canvas.getBoundingClientRect();
+    const x = (px - rect.left) * (canvas.width / rect.width);
+    const y = (py - rect.top) * (canvas.height / rect.height);
+    const c = Math.floor(x / CELL_SIZE);
+    const r = Math.floor(y / CELL_SIZE);
+    if(r<0||r>=ROWS||c<0||c>=COLS) return null;
+    return {r,c};
+  }
+
+  // Flood fill to find cluster
+  function findCluster(sr,sc){
+    const target = grid[sr][sc];
+    if(!target) return [];
+    const color = target.color;
+    const visited = new Set();
+    const stack = [[sr,sc]];
+    const cluster = [];
+    while(stack.length){
+      const [r,c] = stack.pop();
+      const key = r+','+c;
+      if(visited.has(key)) continue;
+      visited.add(key);
+      const cell = grid[r] && grid[r][c];
+      if(!cell || cell.color !== color) continue;
+      cluster.push([r,c]);
+      // neighbors
+      const neigh = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
+      for(const [nr,nc] of neigh){
+        if(nr>=0 && nr<ROWS && nc>=0 && nc<COLS){
+          if(!visited.has(nr+','+nc)) stack.push([nr,nc]);
+        }
+      }
+    }
+    return cluster;
+  }
+
+  // Remove cluster and apply gravity
+  function removeCluster(cluster){
+    if(cluster.length < MIN_CLUSTER) return 0;
+    // remove
+    for(const [r,c] of cluster){
+      grid[r][c] = null;
+    }
+    // each column gravity
+    for(let c=0;c<COLS;c++){
+      let write = ROWS-1;
+      for(let r=ROWS-1;r>=0;r--){
+        if(grid[r][c]){
+          if(write !== r){
+            grid[write][c] = grid[r][c];
+            grid[r][c] = null;
+          }
+          write--;
+        }
+      }
+      // fill top with nulls (already null)
+    }
+    // shift columns left if empty
+    let writeCol = 0;
+    for(let c=0;c<COLS;c++){
+      if(!isColumnEmpty(c)){
+        if(writeCol !== c){
+          for(let r=0;r<ROWS;r++){
+            grid[r][writeCol] = grid[r][c];
+            grid[r][c] = null;
+          }
+        }
+        writeCol++;
+      }
+    }
+    return cluster.length;
+  }
+
+  function isColumnEmpty(c){
+    for(let r=0;r<ROWS;r++) if(grid[r][c]) return false;
+    return true;
+  }
+
+  // Score calculation: n*(n-1) or exponential
+  function calcScore(n){ return n * (n-1) * 5; }
+
+  // Check if any moves left
+  function hasMoves(){
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        if(!grid[r][c]) continue;
+        const color = grid[r][c].color;
+        // check right or down for same color
+        if(c+1<COLS && grid[r][c+1] && grid[r][c+1].color === color) return true;
+        if(r+1<ROWS && grid[r+1][c] && grid[r+1][c].color === color) return true;
+      }
+    }
+    return false;
+  }
+
+  // Hint: find largest cluster >= MIN_CLUSTER
+  function findBestCluster(){
+    const seen = new Set();
+    let best = [];
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        if(!grid[r][c]) continue;
+        const key = r+','+c;
+        if(seen.has(key)) continue;
+        const cluster = findCluster(r,c);
+        for(const [rr,cc] of cluster) seen.add(rr+','+cc);
+        if(cluster.length >= MIN_CLUSTER && cluster.length > best.length){
+          best = cluster.slice();
+        }
+      }
+    }
+    return best;
+  }
+
+  // Shuffle grid keeping colors but random positions
+  function shuffleGrid(){
+    // collect colors
+    const arr = [];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(grid[r][c]) arr.push(grid[r][c].color);
+    // shuffle
+    for(let i = arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]] = [arr[j],arr[i]];
+    }
+    // refill left-to-right top-to-bottom
+    let idx=0;
+    for(let c=0;c<COLS;c++){
+      for(let r=ROWS-1;r>=0;r--){
+        if(idx < arr.length){
+          grid[r][c] = { color: arr[idx++], id: idFor(r,c) };
+        } else grid[r][c] = null;
+      }
+    }
+  }
+
+  // UI updates
+  function updateUI(){
+    document.getElementById('score').textContent = score;
+    document.getElementById('level').textContent = level;
+    document.getElementById('moves').textContent = hasMoves() ? 'bor' : 'yoʻq';
+    const hint = findBestCluster();
+    document.getElementById('hintCost').textContent = hint.length >= MIN_CLUSTER ? `(${hint.length})` : '(-)';
+  }
+
+  // Handle pointer (click/touch)
+  function handlePointer(e){
+    if(animating) return;
+    const pos = posToCell(e.clientX, e.clientY);
+    if(!pos) return;
+    const {r,c} = pos;
+    if(!grid[r][c]) return;
+    const cluster = findCluster(r,c);
+    if(cluster.length < MIN_CLUSTER){
+      flashCell(r,c);
+      return;
+    }
+    animating = true;
+    // explosion animation: scale + fade (simple timeout)
+    highlightCluster(cluster, () => {
+      const n = removeCluster(cluster);
+      score += calcScore(n);
+      // level up: increase difficulty or colors occasionally
+      if(score > level * 500){
+        level++;
+        // add new color if available
+        if(COLORS.length < 8 && level % 3 === 0){
+          // can't dynamically add new color to COLORS constant; skip in demo
+        }
+      }
+      animating = false;
+      draw();
+      updateUI();
+      if(!hasMoves()){
+        setTimeout(()=> gameOver(), 350);
+      }
+    });
+  }
+
+  function flashCell(r,c){
+    const x = c*CELL_SIZE, y = r*CELL_SIZE;
+    const orig = ctx.getImageData(x,y,CELL_SIZE,CELL_SIZE);
+    // quick flash white overlay
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    roundRect(ctx, x, y, CELL_SIZE-6, CELL_SIZE-6, 8);
+    ctx.fill();
+    setTimeout(()=> {
+      draw(); // redraw whole board
+    },120);
+  }
+
+  function highlightCluster(cluster, cb){
+    // simple pulse animation
+    let t = 0, steps = 8;
+    const id = setInterval(()=>{
+      draw();
+      ctx.save();
+      ctx.globalAlpha = 0.9 - (t/steps)*0.6;
+      for(const [r,c] of cluster){
+        const x = c*CELL_SIZE, y = r*CELL_SIZE;
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        roundRect(ctx, x, y, CELL_SIZE-6, CELL_SIZE-6, 8);
+        ctx.fill();
+      }
+      ctx.restore();
+      t++;
+      if(t>steps){
+        clearInterval(id);
+        cb();
+      }
+    },35);
+  }
+
+  function gameOver(){
+    draw();
+    // simple overlay
+    ctx.fillStyle = 'rgba(4,6,12,0.75)';
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.fillStyle = '#fff';
+    ctx.font = '22px Inter, Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Oʻyin tugadi', CANVAS_W/2, CANVAS_H/2 - 10);
+    ctx.font = '14px Inter, Arial';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText('Yana o\'ynash uchun Yangi o\'yin tugmasini bosing', CANVAS_W/2, CANVAS_H/2 + 20);
+  }
+
+  // Controls
+  document.getElementById('newBtn').addEventListener('click', ()=>{
+    startNewGame();
+  });
+
+  document.getElementById('hintBtn').addEventListener('click', ()=>{
+    const best = findBestCluster();
+    if(best.length < MIN_CLUSTER){
+      // no hint
+      const el = document.getElementById('hintText');
+      el.textContent = 'Hech qanday ko‘p qator mavjud emas.';
+      setTimeout(()=> el.textContent = 'Click/touch cluster to blast. Minimal cluster = 2', 1200);
+      return;
+    }
+    // highlight best cluster briefly
+    highlightCluster(best, ()=>{ draw(); });
+  });
+
+  document.getElementById('shuffleBtn').addEventListener('click', ()=>{
+    shuffleGrid();
+    draw();
+    updateUI();
+  });
+
+  // Start new game
+  function startNewGame(){
+    score = 0; level = 1; movesLeft = null;
+    newGrid();
+    // optionally ensure there are moves
+    if(!hasMoves()){
+      shuffleGrid();
+    }
+    draw();
+    updateUI();
+  }
+
+  // Init
+  setupCanvas();
+  startNewGame();
+  // initial draw loop (for retina crispness)
+  window.addEventListener('resize', ()=> draw());
+})();
+</script>
+</body>
+</html>
