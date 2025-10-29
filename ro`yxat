@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matematika Kursi Ro‘yxatdan O‘tish</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #2e86de;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      margin: 30px auto;
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #2e86de;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #2e86de;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      margin-top: 20px;
+      width: 100%;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1e70c1;
+    }
+    .info {
+      font-size: 14px;
+      color: #333;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Matematika Kursiga Ro‘yxatdan O‘tish</h1>
+  </header>
+
+  <div class="container">
+    <h2>Ustoz: Yashnarbek Madaminov</h2>
+    <p class="info">
+      7-11-sinflar uchun matematika kursi. Darslar oflayn shaklda o‘tkaziladi. 
+      Har bir o‘quvchiga individual yondashuv, testlar va nazorat ishlari orqali tayyorgarlik. 
+    </p>
+
+    <form id="registerForm">
+      <label for="ism">Ismingiz</label>
+      <input type="text" id="ism" name="ism" required />
+
+      <label for="familiya">Familiyangiz</label>
+      <input type="text" id="familiya" name="familiya" required />
+
+      <label for="otasining_ismi">Otasining ismi (O‘chestvo)</label>
+      <input type="text" id="otasining_ismi" name="otasining_ismi" required />
+
+      <label for="tel">Telefon raqamingiz</label>
+      <input type="tel" id="tel" name="tel" required placeholder="+998..." />
+
+      <label for="ota_tel">Ota-onangizning telefon raqami</label>
+      <input type="tel" id="ota_tel" name="ota_tel" required placeholder="+998..." />
+
+      <label for="sinf">Sinfingiz</label>
+      <select id="sinf" name="sinf" required>
+        <option value="">Sinfni tanlang</option>
+        <option value="7">7-sinf</option>
+        <option value="8">8-sinf</option>
+        <option value="9">9-sinf</option>
+        <option value="10">10-sinf</option>
+        <option value="11">11-sinf</option>
+      </select>
+
+      <button type="submit">Yuborish</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById("registerForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const data = {
+        ism: document.getElementById("ism").value,
+        familiya: document.getElementById("familiya").value,
+        otasining_ismi: document.getElementById("otasining_ismi").value,
+        tel: document.getElementById("tel").value,
+        ota_tel: document.getElementById("ota_tel").value,
+        sinf: document.getElementById("sinf").value,
+      };
+
+      console.log("Ro'yxatdan o'tgan o'quvchi:", data);
+      alert("Ro'yxatdan o'tish muvaffaqiyatli yakunlandi! Tez orada siz bilan bog'lanamiz.");
+      document.getElementById("registerForm").reset();
+    });
+  </script>
+</body>
+</html>
