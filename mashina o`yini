@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8" />
+    <title>Oddiy Mashina O'yini</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #7ec0ee;
+        }
+        #gameCanvas {
+            background: #444;
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #222;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const carWidth = 50;
+        const carHeight = 100;
+        let carX = canvas.width / 2 - carWidth / 2;
+        const carY = canvas.height - carHeight - 10;
+        const carSpeed = 7;
+
+        let obstacleWidth = 50;
+        let obstacleHeight = 100;
+        let obstacleX = Math.random() * (canvas.width - obstacleWidth);
+        let obstacleY = -obstacleHeight;
+        let obstacleSpeed = 5;
+
+        let leftPressed = false;
+        let rightPressed = false;
+
+        let gameOver = false;
+        let score = 0;
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowLeft') leftPressed = true;
+            if(e.key === 'ArrowRight') rightPressed = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if(e.key === 'ArrowLeft') leftPressed = false;
+            if(e.key === 'ArrowRight') rightPressed = false;
+        });
+
+        function drawCar() {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(carX, carY, carWidth, carHeight);
+        }
+
+        function drawObstacle() {
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(obstacleX, obstacleY, obstacleWidth, obstacleHeight);
+        }
+
+        function drawScore() {
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText("Ball: " + score, 10, 30);
+        }
+
+        function detectCollision() {
+            if (
+                carX < obstacleX + obstacleWidth &&
+                carX + carWidth > obstacleX &&
+                carY < obstacleY + obstacleHeight &&
+                carY + carHeight > obstacleY
+            ) {
+                gameOver = true;
+            }
+        }
+
+        function update() {
+            if(leftPressed && carX > 0) {
+                carX -= carSpeed;
+            }
+            if(rightPressed && carX < canvas.width - carWidth) {
+                carX += carSpeed;
+            }
+
+            obstacleY += obstacleSpeed;
+
+            if(obstacleY > canvas.height) {
+                obstacleY = -obstacleHeight;
+                obstacleX = Math.random() * (canvas.width - obstacleWidth);
+                score++;
+                // Har 5 balldan so'ng tezlik oshadi
+                if(score % 5 === 0) {
+                    obstacleSpeed += 1;
+                }
+            }
+
+            detectCollision();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawCar();
+            drawObstacle();
+            drawScore();
+
+            if(gameOver) {
+                ctx.fillStyle = 'white';
+                ctx.font = '40px Arial';
+                ctx.fillText("O'yin tugadi!", canvas.width / 2 - 120, canvas.height / 2);
+                return;
+            }
+
+            update();
+
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
