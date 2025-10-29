@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Algebra Test - 100 ta misol</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: auto;
+            padding: 20px;
+            background-color: #f9fafb;
+        }
+        h1 {
+            text-align: center;
+            color: #34495e;
+        }
+        .misol {
+            background: white;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 7px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.07);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        label {
+            font-weight: bold;
+            flex-grow: 1;
+        }
+        input[type="text"] {
+            width: 100px;
+            padding: 6px 8px;
+            font-size: 16px;
+            margin-left: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+        }
+        button {
+            margin-top: 20px;
+            padding: 12px 28px;
+            font-size: 17px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        button:hover {
+            background-color: #219150;
+        }
+        .natija {
+            margin-top: 25px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .togri {
+            color: green;
+        }
+        .noto'g'ri {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Algebra Test (100 ta misol)</h1>
+
+<div id="misollar-container"></div>
+
+<button onclick="tekshir()">Javoblarni tekshirish</button>
+
+<div class="natija" id="natija"></div>
+
+<script>
+    // Misollar va ularning javoblari: {text: '...', javob: ...}
+    const misollar = [];
+
+    // 100 ta misol yaratamiz: oddiy tenglamalar ax + b = c yechimlari
+    // Random a, b, c larni tanlab yechimni hisoblaymiz va matn shaklida yozamiz.
+    function randomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    for(let i = 1; i <= 100; i++) {
+        let a = randomInt(1, 10);
+        let x = randomInt(-10, 10);
+        let b = randomInt(-20, 20);
+        // Tenglama: a*x + b = c => c = a*x + b
+        let c = a * x + b;
+
+        // Matn: "a x + b = c; x = ?"
+        let bText = (b >= 0) ? `+ ${b}` : `- ${Math.abs(b)}`;
+        let text = `${a}x ${bText} = ${c}; x =`;
+        
+        misollar.push({text: text, javob: x});
+    }
+
+    // Sahifaga misollarni chiqaramiz
+    const container = document.getElementById('misollar-container');
+    misollar.forEach((misol, index) => {
+        const div = document.createElement('div');
+        div.className = 'misol';
+        div.innerHTML = `
+            <label for="javob${index}">${index + 1}) ${misol.text}</label>
+            <input type="text" id="javob${index}" />
+        `;
+        container.appendChild(div);
+    });
+
+    function tekshir() {
+        let togrilarSoni = 0;
+        let natijaMatni = '';
+
+        misollar.forEach((misol, index) => {
+            const input = document.getElementById(`javob${index}`);
+            const userJavob = input.value.trim();
+            const userJavobNum = parseFloat(userJavob);
+            if(userJavob === '') {
+                natijaMatni += `<p class="noto'g'ri">${index + 1}) Javob kiritilmagan.</p>`;
+                input.style.borderColor = 'red';
+            } else if(!isNaN(userJavobNum) && Math.abs(userJavobNum - misol.javob) < 0.0001) {
+                natijaMatni += `<p class="togri">${index + 1}) To‘g‘ri javob!</p>`;
+                togrilarSoni++;
+                input.style.borderColor = 'green';
+            } else {
+                natijaMatni += `<p class="noto'g'ri">${index + 1}) Noto‘g‘ri! To‘g‘ri javob: ${misol.javob}</p>`;
+                input.style.borderColor = 'red';
+            }
+        });
+
+        natijaMatni += `<hr><p>Siz ${misollar.length} savoldan ${togrilarSoni} tasini to‘g‘ri javobladingiz.</p>`;
+
+        document.getElementById('natija').innerHTML = natijaMatni;
+
+        // Sahifa pastiga natijani ko‘rsatish uchun scroll
+        document.getElementById('natija').scrollIntoView({behavior: "smooth"});
+    }
+</script>
+
+</body>
+</html>
